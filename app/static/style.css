@@ -136,6 +136,21 @@ input[type="password"], input[type="text"] {
 
 #status { margin-top: 14px; text-align: center; font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
 
+.download-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #04212f;
+  text-align: center;
+  font-weight: 600;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.download-btn:hover { opacity: 0.9; }
+
 .modal {
   position: fixed;
   inset: 0;
