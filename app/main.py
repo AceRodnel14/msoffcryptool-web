@@ -27,11 +27,11 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
-logger = logging.getLogger("officecrypt")
+logger = logging.getLogger("docuscrypt")
 
 BASE_DIR = Path(__file__).resolve().parent
 
-app = FastAPI(title="OfficeCrypt")
+app = FastAPI(title="DocusCrypt")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -39,7 +39,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 def _new_tmpdir() -> str:
     # Container-local scratch space only — no volume mount, nothing shared
     # across requests or pods. Cleaned up explicitly in every code path below.
-    return tempfile.mkdtemp(prefix="officecrypt_")
+    return tempfile.mkdtemp(prefix="docuscrypt_")
 
 
 @app.get("/", response_class=HTMLResponse)

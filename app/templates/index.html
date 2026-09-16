@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OfficeCrypt</title>
+<title>DocusCrypt</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <main class="card">
-    <h1>OfficeCrypt</h1>
+    <h1>DocusCrypt</h1>
     <p class="subtitle">Encrypt or decrypt password-protected MS Office files.</p>
 
     <div class="toggle" role="tablist">
@@ -26,7 +26,12 @@
       <label for="password">Password</label>
       <div class="password-row">
         <input type="password" id="password" name="password" required autocomplete="off" placeholder="Enter or generate a password">
-        <button type="button" id="toggle-eye" title="Show/hide password" aria-label="Show or hide password">&#128065;</button>
+        <button type="button" id="toggle-eye" title="Show/hide password" aria-label="Show or hide password">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
       </div>
 
       <div class="generator hidden" id="generator-box">

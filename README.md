@@ -1,4 +1,4 @@
-# OfficeCrypt
+# DocusCrypt
 
 A simple web app for encrypting and decrypting password-protected MS Office files
 (`.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`), built on top of
@@ -29,13 +29,13 @@ experimental feature, so treat encrypted output as "should work" rather than
 Build the image from the project root:
 
 ```bash
-docker build -t officecrypt .
+docker build -t docuscrypt .
 ```
 
 Run it:
 
 ```bash
-docker run --rm -p 8000:8000 officecrypt
+docker run --rm -p 8000:8000 docuscrypt
 ```
 
 Then open **http://localhost:8000** in a browser.
@@ -70,7 +70,7 @@ A `/healthz` endpoint is available for liveness/readiness probes.
 ## Project layout
 
 ```
-officecrypt/
+docuscrypt/
 ├── app/
 │   ├── main.py           # FastAPI routes
 │   ├── crypto.py         # msoffcrypto-tool wrapper (encrypt/decrypt/format checks)

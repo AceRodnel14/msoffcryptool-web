@@ -99,7 +99,10 @@ input[type="password"], input[type="text"] {
   border-radius: 6px;
   cursor: pointer;
   padding: 0 14px;
-  font-size: 1rem;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .generator { margin-bottom: 16px; padding: 12px; background: var(--bg); border-radius: 8px; }
