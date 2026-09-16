@@ -58,7 +58,7 @@ async def api_generate_password(length: int = 16, symbols: bool = False):
 
 
 @app.post("/api/check")
-async def api_check(mode: str = Form(...), file: UploadFile = File(...)):
+def api_check(mode: str = Form(...), file: UploadFile = File(...)):
     """Pre-flight check only — doesn't need a password, just validates the file
     is the right type for the chosen mode (and, for decrypt, is actually encrypted)."""
     if mode not in ("encrypt", "decrypt"):
@@ -94,7 +94,7 @@ async def api_check(mode: str = Form(...), file: UploadFile = File(...)):
 
 
 @app.post("/api/process")
-async def api_process(
+def api_process(
     mode: str = Form(...),
     password: str = Form(...),
     file: UploadFile = File(...),
