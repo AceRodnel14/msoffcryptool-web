@@ -94,20 +94,10 @@ generateBtn.addEventListener("click", async () => {
   }
 });
 
-function clearDownloadLink() {
-  const existing = document.getElementById("download-link");
-  if (existing) existing.remove();
-}
-
-function showDownloadLink(downloadUrl, filename) {
-  clearDownloadLink();
-  const a = document.createElement("a");
-  a.id = "download-link";
-  a.href = downloadUrl;
-  a.download = filename;
-  a.textContent = "Download " + filename;
-  a.className = "download-btn";
-  statusEl.after(a);
+function parseFilename(disposition, fallback) {
+  if (!disposition) return fallback;
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  return match ? match[1] : fallback;
 }
 
 form.addEventListener("submit", async (e) => {
@@ -122,33 +112,50 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
+  const originalFile = fileInput.files[0];
   const fd = new FormData();
   fd.append("mode", state.mode);
   fd.append("password", passwordInput.value);
-  fd.append("file", fileInput.files[0]);
+  fd.append("file", originalFile);
 
   submitBtn.disabled = true;
   statusEl.textContent = "Processing...";
-  clearDownloadLink();
 
   try {
     const res = await fetch("/api/process", { method: "POST", body: fd });
-    let data = null;
-    try {
-      data = await res.json();
-    } catch (_) {
-      /* non-JSON body, handled below */
-    }
 
     if (!res.ok) {
+      let message = "Something went wrong.";
+      try {
+        const err = await res.json();
+        message = err.detail || message;
+      } catch (_) {
+        /* non-JSON error body, keep default message */
+      }
       statusEl.textContent = "";
-      showModal((data && data.detail) || "Something went wrong.");
+      showModal(message);
       return;
     }
 
+    const blob = await res.blob();
+    const filename = parseFilename(
+      res.headers.get("Content-Disposition"),
+      `output_${originalFile.name}`
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
     statusEl.textContent =
-      state.mode === "decrypt" ? "Decrypted successfully." : "Encrypted successfully.";
-    showDownloadLink(data.download_url, data.filename);
+      state.mode === "decrypt"
+        ? "Decrypted successfully — download started."
+        : "Encrypted successfully — download started.";
   } catch (err) {
     statusEl.textContent = "";
     showModal("Network error: " + err.message);

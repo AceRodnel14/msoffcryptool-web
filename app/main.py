@@ -1,6 +1,5 @@
 import logging
 import os
-import secrets
 import shutil
 import tempfile
 import time
@@ -36,28 +35,11 @@ app = FastAPI(title="OfficeCrypt")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
-# Token -> {path, filename, tmpdir, expires_at}. Single-process, in-memory —
-# fine as long as this deployment stays at max 1 replica (it does, per the
-# HTTPScaledObject). Swept lazily on each request; nothing runs in the
-# background, so an idle app just holds a few stale temp dirs until the next
-# request comes in and sweeps them.
-_downloads: dict[str, dict] = {}
-DOWNLOAD_TTL_SECONDS = 15 * 60
-
 
 def _new_tmpdir() -> str:
     # Container-local scratch space only — no volume mount, nothing shared
-    # across requests or pods.
+    # across requests or pods. Cleaned up explicitly in every code path below.
     return tempfile.mkdtemp(prefix="officecrypt_")
-
-
-def _sweep_expired_downloads() -> None:
-    now = time.time()
-    expired = [token for token, entry in _downloads.items() if entry["expires_at"] < now]
-    for token in expired:
-        entry = _downloads.pop(token)
-        shutil.rmtree(entry["tmpdir"], ignore_errors=True)
-        logger.info("download expired, swept token=%s", token)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -130,7 +112,6 @@ def api_process(
     password: str = Form(...),
     file: UploadFile = File(...),
 ):
-    _sweep_expired_downloads()
     logger.info("process start mode=%s filename=%s", mode, file.filename)
 
     if mode not in ("encrypt", "decrypt"):
@@ -152,67 +133,50 @@ def api_process(
     output_filename = f"{stem}{suffix}{ext}"
     output_path = os.path.join(tmpdir, output_filename)
 
-    with open(input_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    logger.info(
-        "process saved upload path=%s size=%d", input_path, os.path.getsize(input_path)
-    )
-
-    t0 = time.monotonic()
     try:
-        if mode == "decrypt":
-            if not is_encrypted(input_path):
-                raise HTTPException(
-                    status_code=400, detail="This file isn't password-protected."
-                )
-            decrypt_file(input_path, output_path, password)
-        else:
-            encrypt_file(input_path, output_path, password)
-    except (WrongPasswordError, UnsupportedFileError) as e:
-        logger.warning("process failed filename=%s reason=%s", file.filename, e)
+        with open(input_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        logger.info(
+            "process saved upload path=%s size=%d", input_path, os.path.getsize(input_path)
+        )
+
+        t0 = time.monotonic()
+        try:
+            if mode == "decrypt":
+                if not is_encrypted(input_path):
+                    raise HTTPException(
+                        status_code=400, detail="This file isn't password-protected."
+                    )
+                decrypt_file(input_path, output_path, password)
+            else:
+                encrypt_file(input_path, output_path, password)
+        except (WrongPasswordError, UnsupportedFileError) as e:
+            logger.warning("process failed filename=%s reason=%s", file.filename, e)
+            raise HTTPException(status_code=400, detail=str(e))
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("process unexpected error filename=%s", file.filename)
+            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+        elapsed = time.monotonic() - t0
+        out_size = os.path.getsize(output_path)
+        logger.info(
+            "process crypto done mode=%s filename=%s elapsed=%.2fs out_size=%d",
+            mode, file.filename, elapsed, out_size,
+        )
+
+        with open(output_path, "rb") as f:
+            data = f.read()
+
+        logger.info(
+            "process sending response filename=%s bytes=%d", output_filename, len(data)
+        )
+        return Response(
+            content=data,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{output_filename}"'},
+        )
+    finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
-        raise HTTPException(status_code=400, detail=str(e))
-    except HTTPException:
-        shutil.rmtree(tmpdir, ignore_errors=True)
-        raise
-    except Exception as e:
-        logger.exception("process unexpected error filename=%s", file.filename)
-        shutil.rmtree(tmpdir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
-
-    elapsed = time.monotonic() - t0
-    out_size = os.path.getsize(output_path)
-    logger.info(
-        "process crypto done mode=%s filename=%s elapsed=%.2fs out_size=%d",
-        mode, file.filename, elapsed, out_size,
-    )
-
-    token = secrets.token_urlsafe(32)
-    _downloads[token] = {
-        "path": output_path,
-        "filename": output_filename,
-        "tmpdir": tmpdir,
-        "expires_at": time.time() + DOWNLOAD_TTL_SECONDS,
-    }
-    logger.info("process ready token=%s filename=%s", token, output_filename)
-
-    return {"ok": True, "download_url": f"/api/download/{token}", "filename": output_filename}
-
-
-@app.get("/api/download/{token}")
-def api_download(token: str):
-    _sweep_expired_downloads()
-    entry = _downloads.get(token)
-    if entry is None:
-        logger.warning("download miss token=%s", token)
-        raise HTTPException(status_code=404, detail="This download link has expired or is invalid.")
-
-    with open(entry["path"], "rb") as f:
-        data = f.read()
-    logger.info("download served token=%s filename=%s bytes=%d", token, entry["filename"], len(data))
-
-    return Response(
-        content=data,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{entry["filename"]}"'},
-    )
+        logger.info("process cleaned up tmpdir=%s", tmpdir)
