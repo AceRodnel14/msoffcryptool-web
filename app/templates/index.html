@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OfficeCrypt</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>OfficeCrypt</h1>
+    <p class="subtitle">Encrypt or decrypt password-protected MS Office files.</p>
+
+    <div class="toggle" role="tablist">
+      <button type="button" class="toggle-btn active" data-mode="decrypt">Decrypt</button>
+      <button type="button" class="toggle-btn" data-mode="encrypt">Encrypt</button>
+    </div>
+
+    <form id="crypt-form" novalidate>
+      <label class="file-drop" id="file-drop" for="file-input">
+        <input type="file" id="file-input" name="file" required>
+        <span id="file-label">Choose a file or drag it here</span>
+      </label>
+      <p class="hint" id="ext-hint"></p>
+
+      <label for="password">Password</label>
+      <div class="password-row">
+        <input type="password" id="password" name="password" required autocomplete="off" placeholder="Enter or generate a password">
+        <button type="button" id="toggle-eye" title="Show/hide password" aria-label="Show or hide password">&#128065;</button>
+      </div>
+
+      <div class="generator hidden" id="generator-box">
+        <label for="pw-length">Generate password &mdash; length: <span id="pw-length-val">16</span></label>
+        <input type="range" id="pw-length" min="8" max="64" value="16">
+        <label class="checkbox"><input type="checkbox" id="pw-symbols"> include symbols</label>
+        <button type="button" id="generate-btn">Generate password</button>
+      </div>
+
+      <button type="submit" id="submit-btn">Decrypt file</button>
+    </form>
+
+    <p id="status"></p>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <p id="modal-message"></p>
+      <button id="modal-ok">OK</button>
+    </div>
+  </div>
+
+  <script>
+    window.SUPPORTED_DECRYPT_EXT = {{ decrypt_exts | tojson }};
+    window.SUPPORTED_ENCRYPT_EXT = {{ encrypt_exts | tojson }};
+  </script>
+  <script src="/static/script.js"></script>
+</body>
+</html>
